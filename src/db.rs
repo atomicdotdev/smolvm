@@ -228,7 +228,7 @@ impl SmolvmDb {
     pub fn list_vms(&self) -> Result<Vec<(String, VmRecord)>> {
         self.with_conn(|conn| {
             let mut stmt = conn
-                .prepare("SELECT name, data FROM vms")
+                .prepare_cached("SELECT name, data FROM vms")
                 .db_err("prepare list_vms")?;
             let rows = stmt
                 .query_map([], |row| {
@@ -274,8 +274,7 @@ impl SmolvmDb {
                     let mut record: VmRecord = serde_json::from_slice(&bytes)
                         .db_err(format!("deserialize vm record '{}'", name))?;
                     f(&mut record);
-                    let new_data =
-                        serde_json::to_vec(&record).db_err("serialize vm record")?;
+                    let new_data = serde_json::to_vec(&record).db_err("serialize vm record")?;
                     tx.execute(
                         "UPDATE vms SET data = ?2 WHERE name = ?1",
                         params![name, new_data],
@@ -305,7 +304,7 @@ impl SmolvmDb {
             let mut config = HashMap::new();
             {
                 let mut stmt = tx
-                    .prepare("SELECT key, value FROM config")
+                    .prepare_cached("SELECT key, value FROM config")
                     .db_err("prepare list config")?;
                 let rows = stmt
                     .query_map([], |row| {
@@ -323,7 +322,7 @@ impl SmolvmDb {
             let mut vms = HashMap::new();
             {
                 let mut stmt = tx
-                    .prepare("SELECT name, data FROM vms")
+                    .prepare_cached("SELECT name, data FROM vms")
                     .db_err("prepare list vms")?;
                 let rows = stmt
                     .query_map([], |row| {
@@ -351,7 +350,7 @@ impl SmolvmDb {
             let tx = conn.transaction().db_err("begin transaction")?;
             {
                 let mut stmt = tx
-                    .prepare(
+                    .prepare_cached(
                         "INSERT INTO config (key, value) VALUES (?1, ?2)
                          ON CONFLICT(key) DO UPDATE SET value = excluded.value",
                     )
